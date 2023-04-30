@@ -17,6 +17,10 @@ The project includes three files:
 </ul>
 <br>
 <h3>How to use</h3>
+Open https://animeshkumarrai.github.io/StopWatch-Web/
+<br>
+OR
+<br>
 Clone the repository to your local machine.<br>
 Open the index.html file in your web browser.<br><br>
 Click the Start button to start the stopwatch.<br>
