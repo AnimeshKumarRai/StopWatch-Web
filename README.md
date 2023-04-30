@@ -25,8 +25,8 @@ Click the Reset button to reset the stopwatch.<br>
 <br>
 <h3>Features</h3>
 <br>
-The stopwatch displays the elapsed time in hours, minutes and seconds
-The Start button starts the stopwatch and the Stop button stops it.
-The Reset button resets the stopwatch to zero.
-The Start button is disabled while the stopwatch is running, and the Stop button is disabled while the stopwatch is stopped.
-The stopwatch can be started and stopped multiple times, and the elapsed time will continue to accumulate.
+The stopwatch displays the elapsed time in hours, minutes and seconds<br>
+The Start button starts the stopwatch and the Stop button stops it.<br>
+The Reset button resets the stopwatch to zero.<br>
+The Start button is disabled while the stopwatch is running, and the Stop button is disabled while the stopwatch is stopped.<br>
+The stopwatch can be started and stopped multiple times, and the elapsed time will continue to accumulate.<br>
