@@ -2,19 +2,650 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <title>Stopwatch</title>
+    <title>FocusFlow - Productivity Timer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                        dark: '#1e293b',
+                        light: '#f8fafc',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'spin-slow': 'spin 3s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(-45deg, #6366f1, #8b5cf6, #ec4899, #f43f5e);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        
+        .floating {
+            animation: floating 6s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Stopwatch</h1>
-        <div class="display">00:00:00</div>
-        <button class="start">Start</button>
-        <button class="stop">Stop</button>
-        <button class="reset">Reset</button>
+<body class="bg-dark text-light min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-clock text-3xl text-primary"></i>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">FocusFlow</h1>
+            </div>
+            <div class="flex space-x-4">
+                <button id="settings-btn" class="p-2 rounded-full hover:bg-slate-700 transition">
+                    <i class="fas fa-cog text-xl"></i>
+                </button>
+                <button id="stats-btn" class="p-2 rounded-full hover:bg-slate-700 transition">
+                    <i class="fas fa-chart-line text-xl"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Mode Selector -->
+            <div class="flex justify-center mb-8">
+                <div class="inline-flex rounded-md shadow-sm" role="group">
+                    <button id="pomodoro-btn" type="button" class="px-4 py-2 text-sm font-medium rounded-l-lg bg-primary text-white">
+                        <i class="fas fa-tomato mr-2"></i> Pomodoro
+                    </button>
+                    <button id="short-break-btn" type="button" class="px-4 py-2 text-sm font-medium bg-slate-700 hover:bg-slate-600">
+                        <i class="fas fa-coffee mr-2"></i> Short Break
+                    </button>
+                    <button id="long-break-btn" type="button" class="px-4 py-2 text-sm font-medium bg-slate-700 hover:bg-slate-600">
+                        <i class="fas fa-umbrella-beach mr-2"></i> Long Break
+                    </button>
+                    <button id="stopwatch-btn" type="button" class="px-4 py-2 text-sm font-medium bg-slate-700 hover:bg-slate-600">
+                        <i class="fas fa-stopwatch mr-2"></i> Stopwatch
+                    </button>
+                    <button id="timer-btn" type="button" class="px-4 py-2 text-sm font-medium rounded-r-lg bg-slate-700 hover:bg-slate-600">
+                        <i class="fas fa-hourglass-half mr-2"></i> Timer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Timer Display -->
+            <div class="flex flex-col items-center justify-center mb-12">
+                <div class="relative w-64 h-64 mb-8">
+                    <svg class="w-full h-full" viewBox="0 0 100 100">
+                        <circle class="text-slate-700" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
+                        <circle id="progress-circle" class="text-primary" stroke-width="8" stroke-dasharray="251.2" stroke-dashoffset="0" stroke-linecap="round" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center flex-col">
+                        <span id="time-display" class="text-5xl font-bold mb-2">25:00</span>
+                        <span id="timer-state" class="text-lg text-slate-300">Ready to focus</span>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-4">
+                    <button id="start-btn" class="px-6 py-3 bg-primary hover:bg-indigo-500 text-white font-medium rounded-lg shadow-lg transition transform hover:scale-105">
+                        <i class="fas fa-play mr-2"></i> Start
+                    </button>
+                    <button id="pause-btn" class="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg shadow-lg transition transform hover:scale-105 hidden">
+                        <i class="fas fa-pause mr-2"></i> Pause
+                    </button>
+                    <button id="reset-btn" class="px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white font-medium rounded-lg shadow-lg transition transform hover:scale-105">
+                        <i class="fas fa-redo mr-2"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Task Section -->
+            <div class="max-w-2xl mx-auto bg-slate-800 rounded-xl shadow-xl p-6 mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold"><i class="fas fa-tasks mr-2 text-secondary"></i>Tasks</h2>
+                    <button id="add-task-btn" class="px-3 py-1 bg-primary hover:bg-indigo-500 text-white text-sm rounded-lg">
+                        <i class="fas fa-plus mr-1"></i> Add Task
+                    </button>
+                </div>
+                
+                <div id="task-input-container" class="mb-4 hidden">
+                    <div class="flex space-x-2">
+                        <input id="task-input" type="text" placeholder="What are you working on?" class="flex-1 px-4 py-2 bg-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <button id="save-task-btn" class="px-4 py-2 bg-primary hover:bg-indigo-500 text-white rounded-lg">
+                            Add
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="tasks-list" class="space-y-2">
+                    <div class="text-center py-4 text-slate-400">
+                        <i class="fas fa-clipboard-list text-2xl mb-2"></i>
+                        <p>No tasks yet. Add one to get started!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Section -->
+            <div id="stats-section" class="max-w-2xl mx-auto bg-slate-800 rounded-xl shadow-xl p-6 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold"><i class="fas fa-chart-pie mr-2 text-secondary"></i>Today's Stats</h2>
+                    <button id="close-stats-btn" class="p-1 rounded-full hover:bg-slate-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-slate-700 p-4 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-primary">4</div>
+                        <div class="text-sm text-slate-300">Pomodoros</div>
+                    </div>
+                    <div class="bg-slate-700 p-4 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-emerald-500">2:00</div>
+                        <div class="text-sm text-slate-300">Focus Time</div>
+                    </div>
+                    <div class="bg-slate-700 p-4 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-amber-500">0:30</div>
+                        <div class="text-sm text-slate-300">Break Time</div>
+                    </div>
+                </div>
+                
+                <div class="h-40 bg-slate-700 rounded-lg p-4 flex items-center justify-center">
+                    <p class="text-slate-400">Weekly progress chart will appear here</p>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div id="settings-section" class="max-w-2xl mx-auto bg-slate-800 rounded-xl shadow-xl p-6 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold"><i class="fas fa-cog mr-2 text-secondary"></i>Settings</h2>
+                    <button id="close-settings-btn" class="p-1 rounded-full hover:bg-slate-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="font-medium mb-2">Timer Durations (minutes)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm text-slate-300 mb-1">Pomodoro</label>
+                                <input type="number" value="25" class="w-full px-3 py-2 bg-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-300 mb-1">Short Break</label>
+                                <input type="number" value="5" class="w-full px-3 py-2 bg-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-300 mb-1">Long Break</label>
+                                <input type="number" value="15" class="w-full px-3 py-2 bg-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-medium mb-2">Alarm Sound</h3>
+                        <select class="w-full px-3 py-2 bg-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option>Digital</option>
+                            <option>Bell</option>
+                            <option>Chime</option>
+                            <option>Nature</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-medium mb-2">Alarm Volume</h3>
+                        <input type="range" min="0" max="100" value="50" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input type="checkbox" id="auto-start" class="w-4 h-4 text-primary rounded focus:ring-primary">
+                        <label for="auto-start" class="ml-2 text-sm">Auto-start next timer</label>
+                    </div>
+                    
+                    <div class="pt-4">
+                        <button class="px-4 py-2 bg-primary hover:bg-indigo-500 text-white rounded-lg">
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-12 text-center text-slate-400 text-sm">
+            <p>Made with <i class="fas fa-heart text-rose-500"></i> to boost your productivity</p>
+        </footer>
     </div>
-    <script src="script.js"></script>
+
+    <!-- Notification -->
+    <div id="notification" class="fixed bottom-4 right-4 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-xl transform translate-y-10 opacity-0 transition duration-300 flex items-center">
+        <i class="fas fa-bell text-yellow-400 mr-2"></i>
+        <span id="notification-message">Timer completed!</span>
+    </div>
+
+    <script>
+        // DOM Elements
+        const timeDisplay = document.getElementById('time-display');
+        const timerState = document.getElementById('timer-state');
+        const progressCircle = document.getElementById('progress-circle');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const notification = document.getElementById('notification');
+        
+        // Mode buttons
+        const pomodoroBtn = document.getElementById('pomodoro-btn');
+        const shortBreakBtn = document.getElementById('short-break-btn');
+        const longBreakBtn = document.getElementById('long-break-btn');
+        const stopwatchBtn = document.getElementById('stopwatch-btn');
+        const timerBtn = document.getElementById('timer-btn');
+        
+        // Task elements
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const taskInputContainer = document.getElementById('task-input-container');
+        const taskInput = document.getElementById('task-input');
+        const saveTaskBtn = document.getElementById('save-task-btn');
+        const tasksList = document.getElementById('tasks-list');
+        
+        // Settings and stats
+        const settingsBtn = document.getElementById('settings-btn');
+        const statsBtn = document.getElementById('stats-btn');
+        const settingsSection = document.getElementById('settings-section');
+        const statsSection = document.getElementById('stats-section');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const closeStatsBtn = document.getElementById('close-stats-btn');
+        
+        // Timer variables
+        let mode = 'pomodoro';
+        let isRunning = false;
+        let timeLeft = 25 * 60; // 25 minutes in seconds
+        let totalTime = 25 * 60;
+        let interval;
+        let pomodoroCount = 0;
+        
+        // Stopwatch variables
+        let stopwatchTime = 0;
+        let stopwatchInterval;
+        
+        // Timer functions
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update progress circle
+            const circumference = 2 * Math.PI * 40;
+            const offset = circumference - (timeLeft / totalTime) * circumference;
+            progressCircle.style.strokeDashoffset = offset;
+        }
+        
+        function startTimer() {
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.classList.add('hidden');
+                pauseBtn.classList.remove('hidden');
+                
+                interval = setInterval(() => {
+                    timeLeft--;
+                    updateDisplay();
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                        isRunning = false;
+                        startBtn.classList.remove('hidden');
+                        pauseBtn.classList.add('hidden');
+                        showNotification(`${mode === 'pomodoro' ? 'Focus session' : 'Break'} completed!`);
+                        
+                        if (mode === 'pomodoro') {
+                            pomodoroCount++;
+                            if (pomodoroCount % 4 === 0) {
+                                setMode('long-break');
+                            } else {
+                                setMode('short-break');
+                            }
+                        } else {
+                            setMode('pomodoro');
+                        }
+                    }
+                }, 1000);
+            }
+        }
+        
+        function pauseTimer() {
+            clearInterval(interval);
+            isRunning = false;
+            startBtn.classList.remove('hidden');
+            pauseBtn.classList.add('hidden');
+        }
+        
+        function resetTimer() {
+            clearInterval(interval);
+            isRunning = false;
+            startBtn.classList.remove('hidden');
+            pauseBtn.classList.add('hidden');
+            timeLeft = totalTime;
+            updateDisplay();
+        }
+        
+        function setMode(newMode) {
+            mode = newMode;
+            
+            // Reset active states
+            pomodoroBtn.classList.remove('bg-primary', 'text-white');
+            shortBreakBtn.classList.remove('bg-primary', 'text-white');
+            longBreakBtn.classList.remove('bg-primary', 'text-white');
+            stopwatchBtn.classList.remove('bg-primary', 'text-white');
+            timerBtn.classList.remove('bg-primary', 'text-white');
+            
+            pomodoroBtn.classList.add('bg-slate-700');
+            shortBreakBtn.classList.add('bg-slate-700');
+            longBreakBtn.classList.add('bg-slate-700');
+            stopwatchBtn.classList.add('bg-slate-700');
+            timerBtn.classList.add('bg-slate-700');
+            
+            // Reset any running timer
+            if (isRunning) {
+                pauseTimer();
+            }
+            
+            // Set new mode
+            switch (mode) {
+                case 'pomodoro':
+                    pomodoroBtn.classList.add('bg-primary', 'text-white');
+                    pomodoroBtn.classList.remove('bg-slate-700');
+                    timeLeft = 25 * 60;
+                    totalTime = 25 * 60;
+                    timerState.textContent = 'Time to focus!';
+                    progressCircle.classList.remove('text-emerald-500', 'text-amber-500');
+                    progressCircle.classList.add('text-primary');
+                    break;
+                case 'short-break':
+                    shortBreakBtn.classList.add('bg-primary', 'text-white');
+                    shortBreakBtn.classList.remove('bg-slate-700');
+                    timeLeft = 5 * 60;
+                    totalTime = 5 * 60;
+                    timerState.textContent = 'Short break time';
+                    progressCircle.classList.remove('text-primary', 'text-amber-500');
+                    progressCircle.classList.add('text-emerald-500');
+                    break;
+                case 'long-break':
+                    longBreakBtn.classList.add('bg-primary', 'text-white');
+                    longBreakBtn.classList.remove('bg-slate-700');
+                    timeLeft = 15 * 60;
+                    totalTime = 15 * 60;
+                    timerState.textContent = 'Long break time';
+                    progressCircle.classList.remove('text-primary', 'text-emerald-500');
+                    progressCircle.classList.add('text-amber-500');
+                    break;
+                case 'stopwatch':
+                    stopwatchBtn.classList.add('bg-primary', 'text-white');
+                    stopwatchBtn.classList.remove('bg-slate-700');
+                    timerState.textContent = 'Stopwatch';
+                    timeDisplay.textContent = '00:00:00';
+                    progressCircle.style.strokeDashoffset = 0;
+                    break;
+                case 'timer':
+                    timerBtn.classList.add('bg-primary', 'text-white');
+                    timerBtn.classList.remove('bg-slate-700');
+                    timeLeft = 0;
+                    totalTime = 0;
+                    timerState.textContent = 'Countdown Timer';
+                    timeDisplay.textContent = '00:00';
+                    progressCircle.style.strokeDashoffset = 251.2;
+                    break;
+            }
+            
+            if (mode !== 'stopwatch' && mode !== 'timer') {
+                updateDisplay();
+            }
+        }
+        
+        // Stopwatch functions
+        function startStopwatch() {
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.classList.add('hidden');
+                pauseBtn.classList.remove('hidden');
+                
+                stopwatchInterval = setInterval(() => {
+                    stopwatchTime++;
+                    updateStopwatchDisplay();
+                }, 1000);
+            }
+        }
+        
+        function updateStopwatchDisplay() {
+            const hours = Math.floor(stopwatchTime / 3600);
+            const minutes = Math.floor((stopwatchTime % 3600) / 60);
+            const seconds = stopwatchTime % 60;
+            timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        function pauseStopwatch() {
+            clearInterval(stopwatchInterval);
+            isRunning = false;
+            startBtn.classList.remove('hidden');
+            pauseBtn.classList.add('hidden');
+        }
+        
+        function resetStopwatch() {
+            clearInterval(stopwatchInterval);
+            isRunning = false;
+            startBtn.classList.remove('hidden');
+            pauseBtn.classList.add('hidden');
+            stopwatchTime = 0;
+            updateStopwatchDisplay();
+        }
+        
+        // Timer functions
+        function startCountdown() {
+            if (timeLeft > 0 && !isRunning) {
+                isRunning = true;
+                startBtn.classList.add('hidden');
+                pauseBtn.classList.remove('hidden');
+                
+                interval = setInterval(() => {
+                    timeLeft--;
+                    updateDisplay();
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                        isRunning = false;
+                        startBtn.classList.remove('hidden');
+                        pauseBtn.classList.add('hidden');
+                        showNotification('Countdown completed!');
+                    }
+                }, 1000);
+            }
+        }
+        
+        // Notification
+        function showNotification(message) {
+            const notificationMessage = document.getElementById('notification-message');
+            notificationMessage.textContent = message;
+            
+            notification.classList.remove('translate-y-10', 'opacity-0');
+            notification.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                notification.classList.remove('translate-y-0', 'opacity-100');
+                notification.classList.add('translate-y-10', 'opacity-0');
+            }, 3000);
+        }
+        
+        // Task functions
+        function addTask() {
+            const taskText = taskInput.value.trim();
+            if (taskText) {
+                const taskId = Date.now();
+                const taskItem = document.createElement('div');
+                taskItem.className = 'task-item bg-slate-700 p-3 rounded-lg flex items-center justify-between group';
+                taskItem.dataset.id = taskId;
+                taskItem.innerHTML = `
+                    <div class="flex items-center">
+                        <input type="checkbox" class="mr-3 h-5 w-5 rounded border-slate-600 text-primary focus:ring-primary">
+                        <span class="task-text">${taskText}</span>
+                    </div>
+                    <div class="task-actions opacity-0 group-hover:opacity-100 transition">
+                        <button class="edit-task p-1 text-slate-300 hover:text-white">
+                            <i class="fas fa-pencil-alt"></i>
+                        </button>
+                        <button class="delete-task p-1 text-slate-300 hover:text-rose-500 ml-1">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                `;
+                
+                if (tasksList.firstChild && tasksList.firstChild.classList.contains('text-center')) {
+                    tasksList.innerHTML = '';
+                }
+                
+                tasksList.prepend(taskItem);
+                taskInput.value = '';
+                taskInputContainer.classList.add('hidden');
+                
+                // Add event listeners for the new task
+                const checkbox = taskItem.querySelector('input[type="checkbox"]');
+                const editBtn = taskItem.querySelector('.edit-task');
+                const deleteBtn = taskItem.querySelector('.delete-task');
+                
+                checkbox.addEventListener('change', function() {
+                    const taskTextElement = taskItem.querySelector('.task-text');
+                    if (this.checked) {
+                        taskTextElement.classList.add('line-through', 'text-slate-400');
+                    } else {
+                        taskTextElement.classList.remove('line-through', 'text-slate-400');
+                    }
+                });
+                
+                editBtn.addEventListener('click', function() {
+                    const taskTextElement = taskItem.querySelector('.task-text');
+                    const newText = prompt('Edit task:', taskTextElement.textContent);
+                    if (newText !== null && newText.trim() !== '') {
+                        taskTextElement.textContent = newText.trim();
+                    }
+                });
+                
+                deleteBtn.addEventListener('click', function() {
+                    taskItem.remove();
+                    if (tasksList.children.length === 0) {
+                        tasksList.innerHTML = `
+                            <div class="text-center py-4 text-slate-400">
+                                <i class="fas fa-clipboard-list text-2xl mb-2"></i>
+                                <p>No tasks yet. Add one to get started!</p>
+                            </div>
+                        `;
+                    }
+                });
+            }
+        }
+        
+        // Event Listeners
+        startBtn.addEventListener('click', function() {
+            if (mode === 'stopwatch') {
+                startStopwatch();
+            } else if (mode === 'timer') {
+                startCountdown();
+            } else {
+                startTimer();
+            }
+        });
+        
+        pauseBtn.addEventListener('click', function() {
+            if (mode === 'stopwatch') {
+                pauseStopwatch();
+            } else {
+                pauseTimer();
+            }
+        });
+        
+        resetBtn.addEventListener('click', function() {
+            if (mode === 'stopwatch') {
+                resetStopwatch();
+            } else if (mode === 'timer') {
+                // For timer mode, we might want to implement a way to set the time first
+                const newTime = prompt('Enter time in minutes:', '5');
+                if (newTime && !isNaN(newTime)) {
+                    timeLeft = parseInt(newTime) * 60;
+                    totalTime = timeLeft;
+                    updateDisplay();
+                }
+            } else {
+                resetTimer();
+            }
+        });
+        
+        // Mode buttons
+        pomodoroBtn.addEventListener('click', () => setMode('pomodoro'));
+        shortBreakBtn.addEventListener('click', () => setMode('short-break'));
+        longBreakBtn.addEventListener('click', () => setMode('long-break'));
+        stopwatchBtn.addEventListener('click', () => setMode('stopwatch'));
+        timerBtn.addEventListener('click', () => setMode('timer'));
+        
+        // Task buttons
+        addTaskBtn.addEventListener('click', function() {
+            taskInputContainer.classList.toggle('hidden');
+            if (!taskInputContainer.classList.contains('hidden')) {
+                taskInput.focus();
+            }
+        });
+        
+        saveTaskBtn.addEventListener('click', addTask);
+        
+        taskInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+        
+        // Settings and stats
+        settingsBtn.addEventListener('click', function() {
+            settingsSection.classList.remove('hidden');
+            statsSection.classList.add('hidden');
+        });
+        
+        statsBtn.addEventListener('click', function() {
+            statsSection.classList.remove('hidden');
+            settingsSection.classList.add('hidden');
+        });
+        
+        closeSettingsBtn.addEventListener('click', function() {
+            settingsSection.classList.add('hidden');
+        });
+        
+        closeStatsBtn.addEventListener('click', function() {
+            statsSection.classList.add('hidden');
+        });
+        
+        // Initialize
+        setMode('pomodoro');
+        updateDisplay();
+    </script>
 </body>
 </html>
